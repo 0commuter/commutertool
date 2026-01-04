@@ -436,7 +436,7 @@
         async function saveResultImage() {
             const a = document.getElementById('capture-area');
             try { 
-                const c = await html2canvas(a, { backgroundColor: "#dfc4f2", scale: 2 }); 
+                const c = await html2canvas(a, { backgroundColor: "#8e7ede", scale: 2 }); 
                 const l = document.createElement('a'); l.download = `A7_Commuter_${Date.now()}.png`; l.href = c.toDataURL(); l.click(); 
             } catch(e){}
         }
@@ -446,3 +446,4 @@
 </body>
 
 </html>
+
