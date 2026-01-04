@@ -367,7 +367,7 @@
                     <div class="info-row">
                         <div class="info-item"><div class="tag">機捷班次</div><div class="val" style="color:var(--primary)">${best}</div></div>
                         <div style="width:1.5px; height:35px; background:var(--border);"></div>
-                        <div class="info-item" style="text-align:right;"><div class="tag">預計抵達</div><div class="val" style="color:var(--leave-highlight)">${String(Math.floor(arTime/60)).padStart(2,'0')}:${String(arTime%60).padStart(2,'0')}</div></div>
+                        <div class="info-item" style="text-align:right;"><div class="tag">預計抵達</div><div class="val" style="color:var(--primary)">${String(Math.floor(arTime/60)).padStart(2,'0')}:${String(arTime%60).padStart(2,'0')}</div></div>
                     </div>
                     <div class="train-nav">
                         <button class="nav-btn" onclick="shiftTrain(1)" ${fi === 0 ? 'disabled' : ''}>⏪ 前一班</button>
@@ -378,7 +378,7 @@
                     <div class="detail-row"><span>🐱 至A7站</span><span>${wT} 分</span></div>
                     <div class="detail-row"><span>🚄 ${aL.includes('機捷') ? aL : `機捷行車時間 (${aL})`}</span><span>${aT} 分</span></div>
                     ${tT > 0 ? `<div class="detail-row"><span>${dTL}</span><span>${tT} 分</span></div>` : ''}
-                    ${mT > 0 ? `<div class="detail-row"><span>實測捷運</span><span>${mT} 分</span></div>` : ''}
+                    ${mT > 0 ? `<div class="detail-row"><span>🚇 捷運行車時間</span><span>${mT} 分</span></div>` : ''}
                     <div class="detail-row"><span>👟 出站走路/公車</span><span>${fW} 分</span></div>
                     <div class="detail-row"><span>📍 總行程</span><span>${wT+aT+tT+mT+fW} 分鐘</span></div>
                 </div>`;
@@ -396,3 +396,4 @@
     </script>
 </body>
 </html>
+
