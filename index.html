@@ -41,7 +41,7 @@
         .line-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--line-c); flex-shrink: 0; }
         .mrt-btn.active-selection { background: var(--line-bg); border-width: 2.5px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
         #result-box { display: none; margin-top: 25px; }
-        #capture-area { padding: 0; background: transparent(--bg); border-radius: 20px; width: 100%; overflow: hidden; }
+        #capture-area { padding: 0; background: transparent; border-radius: 20px; width: 100%; overflow: hidden; }
         .leave-card { background: var(--leave-highlight); border-radius: 20px; padding: 30px 20px; text-align: center; color: white; margin-bottom: 15px; border: 1px solid rgba(255,255,255,0.2); }
         .leave-label { font-size: 14px; opacity: 0.9; margin-bottom: 10px; letter-spacing: 1px; }
         .leave-time { font-size: 72px; font-weight: 800; line-height: 1; letter-spacing: -2px; }
@@ -378,7 +378,7 @@
                     <div class="detail-row"><span>🐱 至A7站</span><span>${wT} 分</span></div>
                     <div class="detail-row"><span>🚄 ${aL.includes('機捷') ? aL : `機捷行車時間 (${aL})`}</span><span>${aT} 分</span></div>
                     ${tT > 0 ? `<div class="detail-row"><span>${dTL}</span><span>${tT} 分</span></div>` : ''}
-                    ${mT > 0 ? `<div class="detail-row"><span>🚇 捷運行車時間</span><span>${mT} 分</span></div>` : ''}
+                    ${mT > 0 ? `<div class="detail-row"><span>🚇 ${mL ? mL : "捷運行車時間"}</span><span>${mT} 分</span></div>` : ''}
                     <div class="detail-row"><span>👟 出站走路/公車</span><span>${fW} 分</span></div>
                     <div class="detail-row"><span>📍 總行程</span><span>${wT+aT+tT+mT+fW} 分鐘</span></div>
                 </div>`;
@@ -396,5 +396,6 @@
     </script>
 </body>
 </html>
+
 
 
