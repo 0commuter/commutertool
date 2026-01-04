@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>A7 Commuter</title>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        :root { 
+            --primary: #3D405B; --bg: #F2F0F7; --card-bg: #FFFFFF; --border: #D1D0D9; 
+            --text-main: #1A1C22; --text-sub: #525467; --leave-highlight: #8e7ede; 
+            --r: #D32F2F; --b: #1976D2; --g: #388E3C; --o: #F57C00;
+            --r-light: rgba(211, 47, 47, 0.08); --b-light: rgba(25, 118, 210, 0.08); 
+            --g-light: rgba(56, 142, 60, 0.08); --o-light: rgba(245, 124, 0, 0.08);
+        }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { font-family: "PingFang TC", "Microsoft JhengHei", sans-serif; background: var(--bg); padding: 15px;
+            margin: 0; display: flex; justify-content: center; color: var(--text-main); line-height: 1.5; overflow-x: hidden;
+        }
+        .app-container { width: 100%; max-width: 500px; padding-bottom: 30px; }
+        .header { text-align: center; font-size: 22px; font-weight: 800; margin: 10px 0 15px;
+            color: var(--primary); letter-spacing: 2px; }
+        .settings-trigger { text-align: right; margin-bottom: 15px; }
+        .text-btn { background: none; border: none; color: var(--text-sub); font-size: 13px;
+            font-weight: 700; cursor: pointer; text-decoration: underline; padding: 5px; }
+        .card { background: var(--card-bg); border-radius: 16px; padding: 20px; margin-bottom: 15px; box-shadow: 0 4px 15px rgba(61, 64, 91, 0.08); border: 1px solid var(--border); width: 100%; }
+        label { color: var(--primary); font-size: 12px; font-weight: 800; display: block; margin-bottom: 10px; text-transform: uppercase; }
+        input[type="time"] { width: 100%; height: 55px; font-size: 28px; font-weight: 700;
+            border: 1.5px solid var(--border); border-radius: 10px; text-align: center; color: var(--text-main); outline: none; }
+        .toggle-group { display: flex; background: #E9E7F0; border-radius: 10px; padding: 5px; gap: 5px; }
+        .toggle-btn { flex: 1; padding: 12px; border: none; border-radius: 8px; background: transparent; color: var(--text-sub); font-weight: 700; font-size: 14px; cursor: pointer; }
+        .toggle-btn.active { background: var(--card-bg); color: var(--primary); box-shadow: 0 2px 8px rgba(61, 64, 91, 0.15); }
+        .start-btn, .quick-btn { padding: 16px; background: #FFF; border: 1px solid var(--border); border-radius: 12px; font-size: 14px; font-weight: 700; color: var(--text-sub); width: 100%; margin-bottom: 10px; cursor: pointer; text-align: center; }
+        .start-btn.selected { background: var(--primary); color: white; border-color: var(--primary); }
+        .quick-btn { color: var(--primary); display: flex; align-items: center; justify-content: center; gap: 10px; transition: all 0.2s; border: 1px solid var(--border); width: 100%; }
+        .quick-btn:active { transform: scale(0.98); background: #f0f0f0; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .mrt-btn { display: flex; align-items: center; justify-content: flex-start; padding: 14px 12px; background: #FFF; border: 1.5px solid var(--line-c); border-radius: 12px; color: var(--primary); font-weight: 700; font-size: 14px; cursor: pointer; width: 100%; gap: 8px; transition: all 0.2s ease; }
+        .line-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--line-c); flex-shrink: 0; }
+        .mrt-btn.active-selection { background: var(--line-bg); border-width: 2.5px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        #result-box { display: none; margin-top: 25px; }
+        #capture-area { padding: 0; background: var(--bg); border-radius: 20px; width: 100%; overflow: hidden; }
+        .leave-card { background: var(--leave-highlight); border-radius: 20px; padding: 30px 20px; text-align: center; color: white; margin-bottom: 15px; border: 1px solid rgba(255,255,255,0.2); }
+        .leave-label { font-size: 14px; opacity: 0.9; margin-bottom: 10px; letter-spacing: 1px; }
+        .leave-time { font-size: 72px; font-weight: 800; line-height: 1; letter-spacing: -2px; }
+        .info-card { background: white; border-radius: 16px; padding: 20px; border: 1.5px solid var(--border); display: flex; flex-direction: column; gap: 15px; margin-bottom: 15px; width: 100%; }
+        .info-row { display: flex; justify-content: space-between; align-items: center; width: 100%; }
+        .info-item .tag { font-size: 11px; color: var(--text-sub); font-weight: 800; margin-bottom: 4px; text-transform: uppercase; }
+        .info-item .val { font-size: 22px; font-weight: 800; }
+        .train-nav { display: flex; border-top: 1px solid #EEE; padding-top: 15px; gap: 10px; }
+        .nav-btn { flex: 1; padding: 10px; background: transparent; border: 1px solid var(--border); border-radius: 8px; color: var(--text-sub); font-weight: 700; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px; }
+        .nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+        .detail-section { background: #F8F7FA; border-radius: 12px; padding: 20px; border: 1.5px solid var(--border); width: 100%; overflow: hidden; }
+        .detail-row { display: flex; justify-content: space-between; padding: 10px 0; font-size: 14px; border-bottom: 1px solid #EAE8F0; }
+        .detail-row span:first-child { color: var(--text-sub); }
+        .detail-row:last-child { border-bottom: none; font-weight: 800; color: var(--primary); padding-top: 12px; }
+        .extra-stepper { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 10px 0; width: 100%; }
+        .step-btn { width: 44px; height: 44px; border-radius: 10px; border: 1.5px solid var(--primary); background: #FFF; color: var(--primary); font-size: 18px; font-weight: 800; cursor: pointer; }
+        input[type="number"] { width: 60px; height: 44px; font-size: 24px; font-weight: 800; border: none; text-align: center; outline: none; color: var(--text-main); background: transparent; }
+        .save-btn { padding: 16px; background: var(--primary); color: white; border: none; border-radius: 12px; font-weight: 800; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; margin-top: 15px; }
+        #settings-card { background: #3D405B; color: white; border: none; z-index: 100; }
+        .file-input-group { margin-bottom: 18px; }
+        .file-input-group label { color: #BBB; font-size: 11px; margin-bottom: 5px; }
+        .status-tag { font-size: 10px; padding: 2px 6px; border-radius: 4px; background: rgba(255,255,255,0.1); margin-left: 5px; }
+        .status-tag.ok { color: #4CAF50; background: rgba(76, 175, 80, 0.2); }
+        .section-title { font-size: 13px; font-weight: 800; color: var(--primary); margin-bottom: 15px; }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <div class="header">A7 Commuter</div>
+        <div class="settings-trigger">
+            <button class="text-btn" onclick="toggleSettings()">⚙️ 資料管理 (匯入後即優先使用您的 Excel)</button>
+        </div>
+        <div id="settings-card" class="card hidden">
+            <div class="section-title" style="color:#FFF">數據中心</div>
+            <p style="font-size: 10px; color: #BBB; margin-top: -10px; margin-bottom: 15px;">匯入 CSV 後，系統將讀取您的檔案並永久記憶。</p>
+            <div class="file-input-group">
+                <label>1. 平日時刻表 <span id="status-weekday" class="status-tag">尚未匯入</span></label>
+                <input type="file" id="file-weekdays" accept=".csv" onchange="handleFileUpload('weekday', this)">
+            </div>
+            <div class="file-input-group">
+                <label>2. 假日時刻表 <span id="status-holiday" class="status-tag">尚未匯入</span></label>
+                <input type="file" id="file-offdays" accept=".csv" onchange="handleFileUpload('holiday', this)">
+            </div>
+            <div class="file-input-group">
+                <label>3. 捷運車程 (常用捷運站.csv) <span id="status-stations" class="status-tag">尚未匯入</span></label>
+                <input type="file" id="file-stations" accept=".csv" onchange="handleFileUpload('stations', this)">
+            </div>
+            <div class="file-input-group">
+                <label>4. 常用行程 (常用行程.csv) <span id="status-quick" class="status-tag">尚未匯入</span></label>
+                <input type="file" id="file-quick" accept=".csv" onchange="handleFileUpload('quick', this)">
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
+                <button class="text-btn" style="color: #FFB7B7; text-decoration: none;" onclick="clearSavedData()">⚠ 重設資料</button>
+                <button class="text-btn" style="color: white; border: 1px solid white; border-radius: 8px; padding: 5px 15px; text-decoration:none;" onclick="toggleSettings()">完成</button>
+            </div>
+        </div>
+        <div class="card">
+            <label>1. 預計抵達時間</label>
+            <input type="time" id="target" value="09:00" onchange="resetOffsetAndCalc()">
+            <div style="margin-top: 25px;">
+                <label>2. 運行日期類型</label>
+                <div class="toggle-group">
+                    <button id="day-weekday" class="toggle-btn active" onclick="updateDay('weekday')">平日</button>
+                    <button id="day-holiday" class="toggle-btn" onclick="updateDay('holiday')">假日</button>
+                </div>
+            </div>
+        </div>
+        <div class="card">
+            <div class="section-title">3. 常用行程 / 轉乘起點</div>
+            <div id="quick-routes-container" style="margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #EDF2F7;"></div>
+            <label>🔍 自選轉乘起點</label>
+            <div class="grid">
+                <button id="start-taipei" class="start-btn selected" onclick="updateStart('taipei')">台北車站</button>
+                <button id="start-beimen" class="start-btn" onclick="updateStart('beimen')">北門站</button>
+            </div>
+        </div>
+        <div id="lines-card" class="card">
+            <div class="section-title">4. 捷運線</div>
+            <div class="grid" id="line-grid">
+                <button id="btn-line-R" class="mrt-btn" style="--line-c:var(--r); --line-bg:var(--r-light)" onclick="showStations('R')"><div class="line-dot"></div>淡水線</button>
+                <button id="btn-line-B" class="mrt-btn" style="--line-c:var(--b); --line-bg:var(--b-light)" onclick="showStations('B')"><div class="line-dot"></div>板南線</button>
+                <button id="btn-line-G" class="mrt-btn" style="--line-c:var(--g); --line-bg:var(--g-light)" onclick="showStations('G')"><div class="line-dot"></div>松山新店線</button>
+                <button id="btn-line-O" class="mrt-btn" style="--line-c:var(--o); --line-bg:var(--o-light)" onclick="showStations('O')"><div class="line-dot"></div>中和新蘆線</button>
+            </div>
+        </div>
+        <div id="stations-card" class="card hidden">
+            <div class="section-title" id="lineTitle">選擇車站</div>
+            <div id="stBtns" class="grid"></div>
+        </div>
+        <div id="extra-time-card" class="card hidden">
+            <div class="section-title">5. 出站後走路/搭公車時間 (分)</div>
+            <div class="extra-stepper">
+                <button class="step-btn" onclick="adjustExtra(-5)">-5</button>
+                <button class="step-btn" onclick="adjustExtra(-1)">-</button>
+                <input type="number" id="extraTime" value="0" min="0" oninput="calc()">
+                <button class="step-btn" onclick="adjustExtra(1)">+</button>
+                <button class="step-btn" onclick="adjustExtra(5)">+5</button>
+            </div>
+        </div>
+        <div id="result-box">
+            <div id="capture-area">
+                <div id="result-content"></div>
+            </div>
+            <button class="save-btn" onclick="saveResultImage()">📸 儲存結果圖片</button>
+        </div>
+    </div>
+    <script>
+        // 初始化為空，等待 CSV 匯入 [cite: 81, 82, 83, 84]
+        let dayType = 'weekday', startStation = 'taipei', currentStationName = '', currentMrtMins = 0, isQuickMode = false, qData = null, trainOffset = 0;
+        let a7Trains = { weekday: [], holiday: [] };
+        let db = {
+            'G': { n: '松山新店線', c: 'var(--g)', cl: 'var(--g-light)', taipei: {}, beimen: {} },
+            'B': { n: '板南線', c: 'var(--b)', cl: 'var(--b-light)', taipei: {}, beimen: {} },
+            'R': { n: '淡水線', c: 'var(--r)', cl: 'var(--r-light)', taipei: {}, beimen: {} },
+            'O': { n: '中和新蘆線', c: 'var(--o)', cl: 'var(--o-light)', taipei: {}, beimen: {} }
+        };
+        let quickRoutes = [];
+
+        function initStorage() {
+            const t = localStorage.getItem('a7_trains'), d = localStorage.getItem('a7_db'), q = localStorage.getItem('a7_quick');
+            if(t){ a7Trains = JSON.parse(t); updateStatusTag('weekday', true); updateStatusTag('holiday', true); }
+            if(d){ db = JSON.parse(d); updateStatusTag('stations', true); }
+            if(q){ quickRoutes = JSON.parse(q); updateStatusTag('quick', true); }
+            renderQuickRoutes();
+            refreshLineButtons();
+        }
+
+        function updateStatusTag(type, ok) {
+            const tag = document.getElementById(`status-${type}`);
+            if(tag){ if(ok) { tag.classList.add('ok'); tag.innerText = '已載入 CSV'; } else { tag.classList.remove('ok'); tag.innerText = '尚未匯入'; } }
+        }
+
+        function toggleSettings() { document.getElementById('settings-card').classList.toggle('hidden'); }
+
+        function handleFileUpload(type, input) {
+            const f = input.files[0]; if(!f) return;
+            const r = new FileReader();
+            r.onload = function(e) {
+                const rows = e.target.result.split('\n').map(l=>l.trim()).filter(l=>l);
+                if(type==='weekday'||type==='holiday'){
+                    const times = rows.slice(1).map(l=>l.split(',')[0].trim().substring(0,5)).filter(t=>t.match(/^\d{2}:\d{2}$/));
+                    if(times.length > 0) {
+                        a7Trains[type] = [...new Set(times)].sort();
+                        localStorage.setItem('a7_trains', JSON.stringify(a7Trains));
+                        updateStatusTag(type, true);
+                    }
+                } else if(type==='stations') {
+                    const nd = { 
+                        'G':{n:'松山新店線',c:'var(--g)',cl:'var(--g-light)',taipei:{},beimen:{}}, 
+                        'B':{n:'板南線',c:'var(--b)',cl:'var(--b-light)',taipei:{},beimen:{}}, 
+                        'R':{n:'淡水線',c:'var(--r)',cl:'var(--r-light)',taipei:{},beimen:{}}, 
+                        'O':{n:'中和新蘆線',c:'var(--o)',cl:'var(--o-light)',taipei:{},beimen:{}} 
+                    };
+                    rows.slice(1).forEach(row=>{
+                        const c = row.split(',').map(s=>s.trim());
+                        if(c.length < 2) return;
+                        let key=''; const ln = c[0];
+                        if(ln.includes('松山') || ln.includes('新店')) key='G'; 
+                        else if(ln.includes('板南')) key='B'; 
+                        else if(ln.includes('淡水') || ln.includes('信義')) key='R'; 
+                        else if(ln.includes('中和') || ln.includes('新蘆')) key='O';
+                        if(key && c[1]){
+                            const t = parseInt(c[2]), b = parseInt(c[3]);
+                            if(!isNaN(t)) nd[key].taipei[c[1]] = t;
+                            if(!isNaN(b)) nd[key].beimen[c[1]] = b;
+                        }
+                    });
+                    db = nd; localStorage.setItem('a7_db', JSON.stringify(db));
+                    updateStatusTag('stations', true);
+                } else if(type==='quick') {
+                    const nq = rows.slice(1).map(row => {
+                        const c = row.split(',').map(s=>s.trim());
+                        if(c.length < 6) return null;
+                        return {
+                            name: c[0], walkTime: parseInt(c[1]) || 0, airMRTTime: parseInt(c[2]) || 0, transferTime: parseInt(c[3]) || 0, mrtTime: parseInt(c[4]) || 0, finalWalkTime: parseInt(c[5]) || 0, transferLabel: c[6] || "", airMRTLabel: c[7] || "", mrtLabel: c[8] || "", dest: c[9] || c[0]
+                        };
+                    }).filter(x => x !== null);
+                    if(nq.length > 0) {
+                        quickRoutes = nq; localStorage.setItem('a7_quick', JSON.stringify(quickRoutes));
+                        updateStatusTag('quick', true); renderQuickRoutes();
+                    }
+                }
+                refreshLineButtons(); calc();
+            };
+            r.readAsText(f); 
+        }
+
+        function renderQuickRoutes() {
+            const container = document.getElementById('quick-routes-container');
+            container.innerHTML = '';
+            quickRoutes.forEach((route, index) => {
+                const btn = document.createElement('button');
+                btn.className = 'quick-btn'; btn.innerHTML = route.name;
+                btn.onclick = () => applyDynamicQuickMode(index);
+                container.appendChild(btn);
+            });
+            const noTransBtn = document.createElement('button');
+            noTransBtn.className = 'quick-btn'; noTransBtn.innerHTML = '🚉 不轉乘 (抵達 A1 台北車站)';
+            noTransBtn.onclick = applyNoTransfer;
+            container.appendChild(noTransBtn);
+        }
+
+        function applyDynamicQuickMode(idx) {
+            isQuickMode = true; qData = quickRoutes[idx];
+            document.querySelectorAll('.start-btn').forEach(b => b.classList.remove('selected'));
+            document.getElementById('stations-card').classList.add('hidden'); 
+            document.getElementById('lines-card').classList.add('hidden'); 
+            document.getElementById('extra-time-card').classList.add('hidden');
+            resetOffsetAndCalc(); document.getElementById('result-box').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function applyNoTransfer() {
+            isQuickMode = true;
+            document.querySelectorAll('.start-btn').forEach(b => b.classList.remove('selected'));
+            document.getElementById('stations-card').classList.add('hidden'); 
+            document.getElementById('lines-card').classList.add('hidden'); 
+            document.getElementById('extra-time-card').classList.remove('hidden'); 
+            qData = { name: "A1 台北車站", walkTime: 15, airMRTTime: 24, transferTime: 0, mrtTime: 0, finalWalkTime: 0, transferLabel: "", airMRTLabel: "機捷行車時間", mrtLabel: "捷運行車時間", dest: "A1 台北車站" };
+            resetOffsetAndCalc(); document.getElementById('extra-time-card').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function clearSavedData() { if(confirm("確定要重設資料嗎？")){ localStorage.clear(); location.reload(); } }
+        
+        function refreshLineButtons() { 
+            let any = false;
+            for (let k in db) { 
+                const btn = document.getElementById(`btn-line-${k}`);
+                const has = Object.keys(db[k][startStation]).length > 0;
+                if(btn) btn.classList.toggle('hidden', !has); if(has) any = true;
+            } 
+            return any;
+        }
+
+        function updateStart(s) { 
+            isQuickMode = false; startStation = s; 
+            document.querySelectorAll('.start-btn').forEach(b=>b.classList.remove('selected')); 
+            document.getElementById(`start-${s}`).classList.add('selected'); 
+            document.getElementById('stations-card').classList.add('hidden'); 
+            document.getElementById('lines-card').classList.remove('hidden'); 
+            document.getElementById('extra-time-card').classList.add('hidden'); 
+            document.getElementById('result-box').style.display = 'none'; 
+            refreshLineButtons(); 
+            document.getElementById('lines-card').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function updateDay(t) { dayType = t; document.getElementById('day-weekday').classList.toggle('active', t==='weekday'); document.getElementById('day-holiday').classList.toggle('active', t==='holiday'); calc(); }
+        function resetOffsetAndCalc() { trainOffset = 0; calc(); }
+        
+        function showStations(k) { 
+            isQuickMode = false;
+            document.querySelectorAll('#line-grid .mrt-btn').forEach(b => b.classList.remove('active-selection')); 
+            document.getElementById(`btn-line-${k}`).classList.add('active-selection'); 
+            const c = document.getElementById('stations-card'); 
+            c.classList.remove('hidden'); 
+            document.getElementById('lineTitle').innerText = db[k].n; 
+            let h = '';
+            for(let s in db[k][startStation]) {
+                h += `<button class="mrt-btn" style="--line-c:${db[k].c}; --line-bg:${db[k].cl}" onclick="selectStation('${s}', ${db[k][startStation][s]}, this)">
+                        <div class="line-dot"></div>${s}
+                      </button>`;
+            }
+            document.getElementById('stBtns').innerHTML = h; 
+            c.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function selectStation(n, m, b) { 
+            currentStationName = n; currentMrtMins = m; 
+            document.querySelectorAll('#stBtns .mrt-btn').forEach(x => x.classList.remove('active-selection')); 
+            b.classList.add('active-selection'); 
+            document.getElementById('extra-time-card').classList.remove('hidden'); 
+            resetOffsetAndCalc();
+        }
+
+        function adjustExtra(v) { const e = document.getElementById('extraTime'); e.value = Math.max(0, (parseInt(e.value) || 0) + v); calc(); }
+        function shiftTrain(dir) { trainOffset += dir; calc(); }
+
+        function calc() {
+            let wT, aT, tT, mT, fW, dN, aL, tL, mL;
+            if (isQuickMode && qData) {
+                ({walkTime:wT, airMRTTime:aT, transferTime:tT, mrtTime:mT, finalWalkTime:fW, dest:dN, airMRTLabel:aL, transferLabel:tL, mrtLabel:mL} = qData);
+                if(!document.getElementById('extra-time-card').classList.contains('hidden')) fW = parseInt(document.getElementById('extraTime').value) || 0;
+            } else {
+                if (!currentStationName) return;
+                wT = 15; aT = 24; tT = (startStation === 'taipei' ? 13 : 10); mT = currentMrtMins;
+                fW = parseInt(document.getElementById('extraTime').value) || 0;
+                dN = currentStationName; aL = "機捷行車時間";
+                tL = "from" + (startStation === 'taipei' ? '台北車站' : '北門站'); mL = "捷運行車時間";
+            }
+
+            const tList = a7Trains[dayType];
+            if (!tList || tList.length === 0) {
+                document.getElementById('result-box').style.display = 'block';
+                document.getElementById('result-content').innerHTML = '<div class="leave-card" style="padding:20px; font-size:14px;">請先點選上方齒輪匯入時刻表 CSV 檔案</div>';
+                return;
+            }
+
+            const [h, m] = document.getElementById('target').value.split(':').map(Number);
+            let limit = (h * 60 + m) - fW - mT - tT - aT;
+            let bi = 0;
+            for (let i = 0; i < tList.length; i++) { if (tList[i].split(':').map(Number).reduce((p,c)=>p*60+c) <= limit) bi = i; else break; }
+            let fi = bi - trainOffset;
+            if (fi < 0) { fi = 0; trainOffset = bi; }
+            if (fi >= tList.length) { fi = tList.length - 1; trainOffset = bi - (tList.length - 1); }
+            let best = tList[fi], [bh, bm] = best.split(':').map(Number), lTime = (bh * 60 + bm) - wT, arTime = (bh * 60 + bm) + aT + tT + mT + fW;
+            if (lTime < 0) lTime += 1440; arTime %= 1440;
+
+            let dTL = "";
+            if (tT > 0) {
+                const sn = startStation === 'taipei' ? '台北車站' : '北門站';
+                const content = (isQuickMode && tL && !tL.includes(sn)) ? tL : "from" + sn;
+                dTL = `🏃 站內轉乘(${content})`;
+            }
+
+            document.getElementById('result-box').style.display = 'block';
+            document.getElementById('result-content').innerHTML = `
+                <div class="leave-card">
+                    <div class="leave-label">🏠 建議出門時間 ${trainOffset > 0 ? `(提早 ${trainOffset} 班)` : trainOffset < 0 ? `(延後 ${Math.abs(trainOffset)} 班)` : ""}</div>
+                    <div class="leave-time">${String(Math.floor(lTime/60)).padStart(2,'0')}:${String(lTime%60).padStart(2,'0')}</div>
+                    <div style="font-size:12px; margin-top:10px; opacity:0.8;">目的地：${dN}</div>
+                </div>
+                <div class="info-card">
+                    <div class="info-row">
+                        <div class="info-item"><div class="tag">機捷班次</div><div class="val" style="color:var(--primary)">${best}</div></div>
+                        <div style="width:1.5px; height:35px; background:var(--border);"></div>
+                        <div class="info-item" style="text-align:right;"><div class="tag">預計抵達</div><div class="val" style="color:var(--leave-highlight)">${String(Math.floor(arTime/60)).padStart(2,'0')}:${String(arTime%60).padStart(2,'0')}</div></div>
+                    </div>
+                    <div class="train-nav">
+                        <button class="nav-btn" onclick="shiftTrain(1)" ${fi === 0 ? 'disabled' : ''}>⏪ 前一班</button>
+                        <button class="nav-btn" onclick="shiftTrain(-1)" ${fi === tList.length - 1 ? 'disabled' : ''}>後一班 ⏩</button>
+                    </div>
+                </div>
+                <div class="detail-section">
+                    <div class="detail-row"><span>🐱 至A7站</span><span>${wT} 分</span></div>
+                    <div class="detail-row"><span>🚄 ${aL.includes('機捷') ? aL : `機捷行車時間 (${aL})`}</span><span>${aT} 分</span></div>
+                    ${tT > 0 ? `<div class="detail-row"><span>${dTL}</span><span>${tT} 分</span></div>` : ''}
+                    ${mT > 0 ? `<div class="detail-row"><span>實測捷運</span><span>${mT} 分</span></div>` : ''}
+                    <div class="detail-row"><span>👟 出站走路/公車</span><span>${fW} 分</span></div>
+                    <div class="detail-row"><span>📍 總行程</span><span>${wT+aT+tT+mT+fW} 分鐘</span></div>
+                </div>`;
+        }
+
+        async function saveResultImage() {
+            const a = document.getElementById('capture-area');
+            try { 
+                const c = await html2canvas(a, { backgroundColor: "#8e7ede", scale: 2 });
+                const l = document.createElement('a'); l.download = `A7_Commuter_${Date.now()}.png`; l.href = c.toDataURL(); l.click();
+            } catch(e){}
+        }
+
+        window.onload = initStorage;
+    </script>
+</body>
+</html>
