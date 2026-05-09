@@ -28,19 +28,19 @@
         .card { background: var(--card-bg); border-radius: 16px; padding: 20px; margin-bottom: 15px; box-shadow: 0 4px 15px rgba(61, 64, 91, 0.08); border: 1px solid var(--border); width: 100%; }
         label { color: var(--primary); font-size: 12px; font-weight: 800; display: block; margin-bottom: 10px; text-transform: uppercase; }
         input[type="time"] { 
-    width: 100%; 
-    max-width: 100%; /* 確保不會超過父層邊框 */
-    height: 55px; 
-    font-size: 24px; /* 稍微調小一點點以適應 Safari 內建圖示空間 */
-    font-weight: 700; 
-    border: 1.5px solid var(--border); 
-    border-radius: 10px; 
-    text-align: center; 
-    color: var(--text-main); 
-    outline: none; 
-    -webkit-appearance: none; /* 去除 Safari 預設外觀 */
-    appearance: none;
-}
+            width: 100%; 
+            max-width: 100%;
+            height: 55px; 
+            font-size: 24px;
+            font-weight: 700; 
+            border: 1.5px solid var(--border); 
+            border-radius: 10px; 
+            text-align: center; 
+            color: var(--text-main); 
+            outline: none; 
+            -webkit-appearance: none;
+            appearance: none;
+        }
         .toggle-group { display: flex; background: #E9E7F0; border-radius: 10px; padding: 5px; gap: 5px; }
         .toggle-btn { flex: 1; padding: 12px; border: none; border-radius: 8px; background: transparent; color: var(--text-sub); font-weight: 700; font-size: 14px; cursor: pointer; }
         .toggle-btn.active { background: var(--card-bg); color: var(--primary); box-shadow: 0 2px 8px rgba(61, 64, 91, 0.15); }
@@ -162,7 +162,8 @@
         </div>
     </div>
     <script>
-        // 初始化為空，等待 CSV 匯入 [cite: 81, 82, 83, 84]
+        const QUERY_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24 小時
+
         let dayType = 'weekday', startStation = 'taipei', currentStationName = '', currentMrtMins = 0, isQuickMode = false, qData = null, trainOffset = 0;
         let a7Trains = { weekday: [], holiday: [] };
         let db = {
@@ -173,6 +174,97 @@
         };
         let quickRoutes = [];
 
+        // ── 儲存查詢條件 ──────────────────────────────────────────
+        function saveQueryState() {
+            const state = {
+                savedAt: Date.now(),
+                targetTime: document.getElementById('target').value,
+                dayType,
+                startStation,
+                currentStationName,
+                currentMrtMins,
+                isQuickMode,
+                qDataIndex: isQuickMode && qData ? quickRoutes.findIndex(r => r.name === qData.name) : -1,
+                isNoTransfer: isQuickMode && qData && qData.name === 'A1 台北車站' && qData.transferTime === 0 && qData.mrtTime === 0,
+                extraTime: parseInt(document.getElementById('extraTime').value) || 0,
+                trainOffset
+            };
+            localStorage.setItem('a7_query_state', JSON.stringify(state));
+        }
+
+        // ── 還原查詢條件 ──────────────────────────────────────────
+        function restoreQueryState() {
+            const raw = localStorage.getItem('a7_query_state');
+            if (!raw) return false;
+
+            let state;
+            try { state = JSON.parse(raw); } catch(e) { return false; }
+
+            // 超過 24 小時就清除，不還原
+            if (!state.savedAt || Date.now() - state.savedAt > QUERY_EXPIRY_MS) {
+                localStorage.removeItem('a7_query_state');
+                return false;
+            }
+
+            // 還原時間與日期類型
+            document.getElementById('target').value = state.targetTime || '09:00';
+            dayType = state.dayType || 'weekday';
+            document.getElementById('day-weekday').classList.toggle('active', dayType === 'weekday');
+            document.getElementById('day-holiday').classList.toggle('active', dayType === 'holiday');
+
+            trainOffset = state.trainOffset || 0;
+            document.getElementById('extraTime').value = state.extraTime || 0;
+
+            if (state.isQuickMode) {
+                if (state.isNoTransfer) {
+                    // 還原「不轉乘」模式
+                    applyNoTransfer();
+                } else if (state.qDataIndex >= 0 && quickRoutes[state.qDataIndex]) {
+                    // 還原常用行程
+                    applyDynamicQuickMode(state.qDataIndex);
+                }
+                // 注意：applyXxx 內部會呼叫 calc()，所以不需重複呼叫
+            } else {
+                // 還原自選捷運站模式
+                startStation = state.startStation || 'taipei';
+                document.querySelectorAll('.start-btn').forEach(b => b.classList.remove('selected'));
+                const startBtn = document.getElementById(`start-${startStation}`);
+                if (startBtn) startBtn.classList.add('selected');
+
+                if (state.currentStationName) {
+                    currentStationName = state.currentStationName;
+                    currentMrtMins = state.currentMrtMins || 0;
+                    // 找出這個站屬於哪條線，重新渲染車站選單並高亮
+                    let foundLine = null;
+                    for (let lineKey in db) {
+                        if (db[lineKey][startStation][currentStationName] !== undefined) {
+                            foundLine = lineKey;
+                            break;
+                        }
+                    }
+                    if (foundLine) {
+                        // 顯示線路按鈕高亮
+                        document.getElementById('lines-card').classList.remove('hidden');
+                        document.getElementById(`btn-line-${foundLine}`).classList.add('active-selection');
+                        // 渲染車站列表並高亮選中站
+                        document.getElementById('lineTitle').innerText = db[foundLine].n;
+                        let h = '';
+                        for (let s in db[foundLine][startStation]) {
+                            h += `<button class="mrt-btn${s === currentStationName ? ' active-selection' : ''}" style="--line-c:${db[foundLine].c}; --line-bg:${db[foundLine].cl}" onclick="selectStation('${s}', ${db[foundLine][startStation][s]}, this)">
+                                    <div class="line-dot"></div>${s}
+                                  </button>`;
+                        }
+                        document.getElementById('stBtns').innerHTML = h;
+                        document.getElementById('stations-card').classList.remove('hidden');
+                        document.getElementById('extra-time-card').classList.remove('hidden');
+                    }
+                    calc();
+                }
+            }
+
+            return true;
+        }
+
         function initStorage() {
             const t = localStorage.getItem('a7_trains'), d = localStorage.getItem('a7_db'), q = localStorage.getItem('a7_quick');
             if(t){ a7Trains = JSON.parse(t); updateStatusTag('weekday', true); updateStatusTag('holiday', true); }
@@ -180,6 +272,8 @@
             if(q){ quickRoutes = JSON.parse(q); updateStatusTag('quick', true); }
             renderQuickRoutes();
             refreshLineButtons();
+            // CSV 載入完成後，嘗試還原上次查詢
+            restoreQueryState();
         }
 
         function updateStatusTag(type, ok) {
@@ -263,7 +357,8 @@
             document.getElementById('stations-card').classList.add('hidden'); 
             document.getElementById('lines-card').classList.add('hidden'); 
             document.getElementById('extra-time-card').classList.add('hidden');
-            resetOffsetAndCalc(); document.getElementById('result-box').scrollIntoView({ behavior: 'smooth' });
+            resetOffsetAndCalc();
+            document.getElementById('result-box').scrollIntoView({ behavior: 'smooth' });
         }
 
         function applyNoTransfer() {
@@ -273,7 +368,8 @@
             document.getElementById('lines-card').classList.add('hidden'); 
             document.getElementById('extra-time-card').classList.remove('hidden'); 
             qData = { name: "A1 台北車站", walkTime: 15, airMRTTime: 24, transferTime: 0, mrtTime: 0, finalWalkTime: 0, transferLabel: "", airMRTLabel: "機捷行車時間", mrtLabel: "捷運行車時間", dest: "A1 台北車站" };
-            resetOffsetAndCalc(); document.getElementById('extra-time-card').scrollIntoView({ behavior: 'smooth' });
+            resetOffsetAndCalc();
+            document.getElementById('extra-time-card').scrollIntoView({ behavior: 'smooth' });
         }
 
         function clearSavedData() { if(confirm("確定要重設資料嗎？")){ localStorage.clear(); location.reload(); } }
@@ -394,45 +490,34 @@
                     <div class="detail-row"><span>👟 出站走路/公車</span><span>${fW} 分</span></div>
                     <div class="detail-row"><span>📍 總行程</span><span>${wT+aT+tT+mT+fW} 分鐘</span></div>
                 </div>`;
+
+            // 每次計算完成後儲存查詢條件
+            saveQueryState();
         }
 
-async function saveResultImage() {
-    const a = document.getElementById('capture-area');
-    try {
-        const canvas = await html2canvas(a, { backgroundColor: "#8e7ede", scale: 2 });
-        
-        // 將畫布轉為 Blob 格式
-        canvas.toBlob(async (blob) => {
-            const file = new File([blob], `A7_Commuter_${Date.now()}.png`, { type: 'image/png' });
-            
-            // 檢查瀏覽器是否支援分享功能 (iPhone Safari 支援)
-            if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                try {
-                    await navigator.share({
-                        files: [file],
-                        title: 'A7 Commuter 截圖',
-                    });
-                } catch (err) {
-                    // 如果使用者取消分享，不執行任何動作
-                }
-            } else {
-                // 如果不支援分享選單，則改回原本的下載模式 (備援方案)
-                const l = document.createElement('a');
-                l.download = `A7_Commuter_${Date.now()}.png`;
-                l.href = canvas.toDataURL();
-                l.click();
+        async function saveResultImage() {
+            const a = document.getElementById('capture-area');
+            try {
+                const canvas = await html2canvas(a, { backgroundColor: "#8e7ede", scale: 2 });
+                canvas.toBlob(async (blob) => {
+                    const file = new File([blob], `A7_Commuter_${Date.now()}.png`, { type: 'image/png' });
+                    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                        try {
+                            await navigator.share({ files: [file], title: 'A7 Commuter 截圖' });
+                        } catch (err) {}
+                    } else {
+                        const l = document.createElement('a');
+                        l.download = `A7_Commuter_${Date.now()}.png`;
+                        l.href = canvas.toDataURL();
+                        l.click();
+                    }
+                }, 'image/png');
+            } catch(e) {
+                console.error("截圖失敗:", e);
             }
-        }, 'image/png');
-    } catch(e) {
-        console.error("截圖失敗:", e);
-    }
-}
+        }
 
         window.onload = initStorage;
     </script>
 </body>
 </html>
-
-
-
-
